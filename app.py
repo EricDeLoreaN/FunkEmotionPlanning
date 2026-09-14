@@ -5,12 +5,18 @@ from google.oauth2.service_account import Credentials
 
 st.set_page_config(page_title="Funk Emotion 2.0 - Planning", page_icon="🎵", layout="wide")
 
-# --- Optimisation de l'affichage (CSS) ---
+# --- Optimisation de l'affichage (CSS compact mobile) ---
 st.markdown("""
     <style>
     [data-testid="stSidebar"] {
         min-width: 200px !important;
         max-width: 250px !important;
+    }
+    .compact-box {
+        padding: 5px;
+        border-radius: 5px;
+        border: 1px solid rgba(150, 150, 150, 0.2);
+        margin-bottom: 5px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -120,53 +126,43 @@ for i in range(2, len(toutes_donnees)):
                 col_i = COLONNES_MUSICIENS[membre] - 1
                 dict_recap[membre] = row[col_i].strip() if len(row) > col_i else ""
             
-            recap_data_pour_tableau.append(dict_recap)
+            recap_data_pour_toucher = recap_data_pour_tableau.append(dict_recap)
 
-# --- UI : Saisie Mobile par Mini-Boutons ---
+# --- UI : Saisie Compacte par Lignes Synthétiques ---
 st.divider()
-st.subheader(f"🗓️ Tes disponibilités - {mois_selectionne_nom}")
-st.info("📱 Clique sur les boutons pour définir tes dispos (🟢 Dispo, 🔴 Indispo, ⚪ Neutre).")
+st.subheader(f"🗓️ Tes dispos - {mois_selectionne_nom}")
+st.caption("💡 Astuce : Modifie rapidement tes dispos ci-dessous (⚪ Neutre, 🟢 Dispo, 🔴 Indispo), puis clique sur Enregistrer.")
 
-# Initialisation de l'état temporaire des dispos dans la session si nécessaire
 if "temp_dispos" not in st.session_state or st.session_state.get("dernier_mois") != mois_selectionne_nom:
     st.session_state["temp_dispos"] = dispos_actuelles.copy()
     st.session_state["dernier_mois"] = mois_selectionne_nom
 
-# Affichage ligne par ligne avec des colonnes épurées
-cellules_a_mettre_a_jour = []
+# Affichage condensé sous forme de lignes épurées (Jour + Date + Sélecteur compact en face)
 for jour_int, ligne_idx in sorted(lignes_dates.items()):
-    # Retrouver le nom du jour et la date correspondante
     info_ligne = next((item for item in recap_data_pour_tableau if item["Jour_num"] == jour_int), None)
     if info_ligne:
-        c_jour = info_ligne["Jour"]
+        c_jour = info_ligne["Jour"][:3].upper() # ex: LUN, MAR...
         c_date = info_ligne["Date"]
         
-        cols = st.columns([2, 2, 3])
+        # On utilise une seule ligne horizontale par jour très compacte
+        cols = st.columns([3, 3, 4])
         with cols[0]:
-            st.markdown(f"**{c_jour}**")
+            st.markdown(f"**{c_jour} {c_date}**")
         with cols[1]:
-            st.markdown(f"`{c_date}`")
-        with cols[2]:
-            # Utilisation de boutons radio horizontaux ou de boutons de sélection par jour
             actuel = st.session_state["temp_dispos"].get(jour_int, "⚪")
-            
-            # Choix via des boutons compacts
-            col_b1, col_b2, col_b3 = st.columns(3)
-            with col_b1:
-                if st.button("⚪", key=f"neutre_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "⚪" else "primary"):
-                    st.session_state["temp_dispos"][jour_int] = "⚪"
-                    st.rerun()
-            with col_b2:
-                if st.button("🟢", key=f"vert_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "🟢" else "primary"):
-                    st.session_state["temp_dispos"][jour_int] = "🟢"
-                    st.rerun()
-            with col_b3:
-                if st.button("🔴", key=f"rouge_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "🔴" else "primary"):
-                    st.session_state["temp_dispos"][jour_int] = "🔴"
-                    st.rerun()
+            # Un selectbox natif ultra-court ou des boutons très serrés
+            nouveau_choix = st.selectbox(
+                f"Dispo {jour_int}",
+                options=["⚪", "🟢", "🔴"],
+                index=["⚪", "🟢", "🔴"].index(actuel),
+                key=f"sel_{mois_selectionne_nom}_{jour_int}",
+                label_visibility="collapsed"
+            )
+            if nouveau_choix != actuel:
+                st.session_state["temp_dispos"][jour_int] = nouveau_choix
 
-st.markdown("---")
-if st.button("✅ Enregistrer toutes mes modifications", type="primary", use_container_width=True):
+st.markdown("")
+if st.button("✅ Enregistrer mes disponibilités", type="primary", use_container_width=True):
     cellules_a_mettre_a_jour = []
     for jour_int, val_choisie in st.session_state["temp_dispos"].items():
         val_origine = dispos_actuelles.get(jour_int, "⚪")
