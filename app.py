@@ -88,7 +88,6 @@ user_col_idx = COLONNES_MUSICIENS[nom_utilisateur] - 1
 lignes_dates = {}
 dispos_actuelles = {}
 evenements_actuels = {}
-user_data_pour_tableau = []
 recap_data_pour_tableau = []
 
 for i in range(2, len(toutes_donnees)):
@@ -111,13 +110,6 @@ for i in range(2, len(toutes_donnees)):
             val_evt = row[16].strip() if len(row) > 16 else ""
             evenements_actuels[jour_int] = val_evt
             
-            user_data_pour_tableau.append({
-                "Jour_num": jour_int,
-                "Jour": jour_nom,
-                "Date": date_str,
-                "Dispos": val_dispo
-            })
-            
             dict_recap = {
                 "Jour_num": jour_int,
                 "Jour": jour_nom,
@@ -130,36 +122,56 @@ for i in range(2, len(toutes_donnees)):
             
             recap_data_pour_tableau.append(dict_recap)
 
-# --- UI : Saisie Mobile-Friendly (Dispos perso) ---
+# --- UI : Saisie Mobile par Mini-Boutons ---
 st.divider()
 st.subheader(f"🗓️ Tes disponibilités - {mois_selectionne_nom}")
-st.info("📱 Modifie tes disponibilités directement dans la colonne 'Dispos', puis clique sur Valider.")
+st.info("📱 Clique sur les boutons pour définir tes dispos (🟢 Dispo, 🔴 Indispo, ⚪ Neutre).")
 
-df_user = pd.DataFrame(user_data_pour_tableau)
-df_user["Dispos"] = df_user["Dispos"].astype(str)
+# Initialisation de l'état temporaire des dispos dans la session si nécessaire
+if "temp_dispos" not in st.session_state or st.session_state.get("dernier_mois") != mois_selectionne_nom:
+    st.session_state["temp_dispos"] = dispos_actuelles.copy()
+    st.session_state["dernier_mois"] = mois_selectionne_nom
 
-edited_df = st.data_editor(
-    df_user,
-    column_config={
-        "Jour_num": None,
-        "Jour": st.column_config.TextColumn("Jour", disabled=True, width="small"),
-        "Date": st.column_config.TextColumn("Date", disabled=True, width="small"),  # Colonne Date rétrécie
-        "Dispos": st.column_config.SelectboxColumn("Dispos", options=["⚪", "🟢", "🔴"], width="medium")  # Colonne Dispos élargie à droite
-    },
-    disabled=["Jour", "Date"],
-    hide_index=True,
-    use_container_width=False,
-    key="editor_dispos"
-)
-
-if st.button("✅ Valider mes disponibilités", type="primary"):
-    cellules_a_mettre_a_jour = []
-    for index, new_row in edited_df.iterrows():
-        jour_int = new_row["Jour_num"]
-        nouvelle_dispo = new_row["Dispos"]
+# Affichage ligne par ligne avec des colonnes épurées
+cellules_a_mettre_a_jour = []
+for jour_int, ligne_idx in sorted(lignes_dates.items()):
+    # Retrouver le nom du jour et la date correspondante
+    info_ligne = next((item for item in recap_data_pour_tableau if item["Jour_num"] == jour_int), None)
+    if info_ligne:
+        c_jour = info_ligne["Jour"]
+        c_date = info_ligne["Date"]
         
-        if nouvelle_dispo != dispos_actuelles[jour_int]:
-            valeur_a_ecrire = "" if nouvelle_dispo == "⚪" else nouvelle_dispo
+        cols = st.columns([2, 2, 3])
+        with cols[0]:
+            st.markdown(f"**{c_jour}**")
+        with cols[1]:
+            st.markdown(f"`{c_date}`")
+        with cols[2]:
+            # Utilisation de boutons radio horizontaux ou de boutons de sélection par jour
+            actuel = st.session_state["temp_dispos"].get(jour_int, "⚪")
+            
+            # Choix via des boutons compacts
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1:
+                if st.button("⚪", key=f"neutre_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "⚪" else "primary"):
+                    st.session_state["temp_dispos"][jour_int] = "⚪"
+                    st.rerun()
+            with col_b2:
+                if st.button("🟢", key=f"vert_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "🟢" else "primary"):
+                    st.session_state["temp_dispos"][jour_int] = "🟢"
+                    st.rerun()
+            with col_b3:
+                if st.button("🔴", key=f"rouge_{mois_selectionne_nom}_{jour_int}", type="secondary" if actuel != "🔴" else "primary"):
+                    st.session_state["temp_dispos"][jour_int] = "🔴"
+                    st.rerun()
+
+st.markdown("---")
+if st.button("✅ Enregistrer toutes mes modifications", type="primary", use_container_width=True):
+    cellules_a_mettre_a_jour = []
+    for jour_int, val_choisie in st.session_state["temp_dispos"].items():
+        val_origine = dispos_actuelles.get(jour_int, "⚪")
+        if val_choisie != val_origine:
+            valeur_a_ecrire = "" if val_choisie == "⚪" else val_choisie
             cellules_a_mettre_a_jour.append(
                 gspread.Cell(row=lignes_dates[jour_int], col=COLONNES_MUSICIENS[nom_utilisateur], value=valeur_a_ecrire)
             )
@@ -169,7 +181,7 @@ if st.button("✅ Valider mes disponibilités", type="primary"):
         st.session_state["succes_perso"] = True
         st.rerun()
     else:
-        st.info("Aucune modification détectée.")
+        st.info("Aucune modification à enregistrer.")
 
 # --- UI : Récapitulatif Global et Saisie des Événements ---
 st.divider()
