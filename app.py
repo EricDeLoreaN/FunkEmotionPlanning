@@ -143,8 +143,8 @@ edited_df = st.data_editor(
     column_config={
         "Jour_num": None,
         "Jour": st.column_config.TextColumn("Jour", disabled=True, width="small"),
-        "Date": st.column_config.TextColumn("Date", disabled=True, width="medium"),
-        "Dispos": st.column_config.SelectboxColumn("Dispos", options=["⚪", "🟢", "🔴"], width="small")
+        "Date": st.column_config.TextColumn("Date", disabled=True, width="small"),  # Colonne Date rétrécie
+        "Dispos": st.column_config.SelectboxColumn("Dispos", options=["⚪", "🟢", "🔴"], width="medium")  # Colonne Dispos élargie à droite
     },
     disabled=["Jour", "Date"],
     hide_index=True,
