@@ -57,7 +57,7 @@ def coloriser_weekends(row):
 
 # --- UI : Barre latérale ---
 st.sidebar.title("📅 Planning")
-st.sidebar.image("funk_emotion_color_clean.jpg", use_container_width=True)
+st.sidebar.image("funk_emotion_color_clean.png", use_container_width=True)
 st.sidebar.header("👤 Qui es-tu ?")
 nom_utilisateur = st.sidebar.selectbox("Sélectionne ton profil :", list(COLONNES_MUSICIENS.keys()))
 
